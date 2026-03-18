@@ -60,7 +60,9 @@ const Index = () => {
             </h1>
             <span className="text-xs text-muted-foreground font-mono">// Emotion Drift Engine</span>
           </div>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <DataUploader onDataLoaded={setUploadedFiles} />
+            <DataExport data={data} />
             <span className="font-mono tabular-nums">v2.2.0</span>
             <span className="flex items-center gap-1.5">
               <span className={`w-1.5 h-1.5 rounded-full ${status.systemStatus === 'Stable' ? 'bg-drift-positive' : 'bg-drift-negative animate-pulse'}`} />
