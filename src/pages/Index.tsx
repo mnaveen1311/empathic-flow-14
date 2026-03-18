@@ -10,6 +10,8 @@ import StressChart from '@/components/StressChart';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import LSTMVisualization from '@/components/LSTMVisualization';
 import BehaviorDetector from '@/components/BehaviorDetector';
+import DataExport from '@/components/DataExport';
+import DataUploader from '@/components/DataUploader';
 import {
   generateDataset,
   getFeatureImportances,
