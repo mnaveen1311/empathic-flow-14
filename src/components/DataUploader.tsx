@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FolderOpen, FileText, Check, X } from 'lucide-react';
+import { Upload, FolderOpen, FileText, Check, X, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UploadedFile {
   name: string;
@@ -8,6 +9,7 @@ interface UploadedFile {
   size: number;
   rowCount: number;
   data: Record<string, string>[];
+  saved?: boolean;
 }
 
 interface Props {
@@ -21,22 +23,24 @@ const CATEGORIES = [
   { id: 'education', label: 'Education', desc: 'Grades & deadlines' },
 ];
 
-function parseCSV(text: string): Record<string, string>[] {
+function parseCSV(text: string): { headers: string[]; rows: Record<string, string>[] } {
   const lines = text.trim().split('\n');
-  if (lines.length < 2) return [];
+  if (lines.length < 2) return { headers: [], rows: [] };
   const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-  return lines.slice(1).map(line => {
+  const rows = lines.slice(1).map(line => {
     const vals = line.split(',').map(v => v.trim().replace(/"/g, ''));
     const row: Record<string, string> = {};
     headers.forEach((h, i) => { row[h] = vals[i] || ''; });
     return row;
   });
+  return { headers, rows };
 }
 
 const DataUploader = ({ onDataLoaded }: Props) => {
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [activeCategory, setActiveCategory] = useState('sensing');
+  const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,13 +50,13 @@ const DataUploader = ({ onDataLoaded }: Props) => {
     const newFiles: UploadedFile[] = [];
     for (const file of Array.from(fileList)) {
       const text = await file.text();
-      const data = parseCSV(text);
+      const { rows } = parseCSV(text);
       newFiles.push({
         name: file.name,
         category: activeCategory,
         size: file.size,
-        rowCount: data.length,
-        data,
+        rowCount: rows.length,
+        data: rows,
       });
     }
     const updated = [...files, ...newFiles];
@@ -65,6 +69,50 @@ const DataUploader = ({ onDataLoaded }: Props) => {
     const updated = files.filter((_, i) => i !== idx);
     setFiles(updated);
     onDataLoaded(updated);
+  };
+
+  const saveToBackend = async () => {
+    setSaving(true);
+    try {
+      const unsaved = files.filter(f => !f.saved);
+      for (const file of unsaved) {
+        const { headers } = parseCSV(''); // headers from data keys
+        const fileHeaders = file.data.length > 0 ? Object.keys(file.data[0]) : [];
+
+        // Insert file metadata
+        const { data: fileRecord, error: fileErr } = await supabase
+          .from('uploaded_files')
+          .insert({
+            file_name: file.name,
+            category: file.category,
+            row_count: file.rowCount,
+            file_size: file.size,
+            headers: fileHeaders,
+          })
+          .select('id')
+          .single();
+
+        if (fileErr) throw fileErr;
+
+        // Insert data in batches of 500
+        const batchSize = 500;
+        for (let i = 0; i < file.data.length; i += batchSize) {
+          const batch = file.data.slice(i, i + batchSize).map(row => ({
+            file_id: fileRecord.id,
+            row_data: row,
+          }));
+          const { error: dataErr } = await supabase.from('uploaded_data').insert(batch);
+          if (dataErr) throw dataErr;
+        }
+
+        file.saved = true;
+      }
+      setFiles([...files]);
+    } catch (err) {
+      console.error('Failed to save:', err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -150,6 +198,7 @@ const DataUploader = ({ onDataLoaded }: Props) => {
                         <span className="text-muted-foreground font-mono">
                           [{f.category}] {f.rowCount.toLocaleString()} rows
                         </span>
+                        {f.saved && <span className="text-drift-positive text-[10px] font-mono">SAVED</span>}
                       </div>
                       <div className="flex items-center gap-2">
                         <Check className="w-3.5 h-3.5 text-drift-positive" />
@@ -166,12 +215,24 @@ const DataUploader = ({ onDataLoaded }: Props) => {
                 <span className="text-xs text-muted-foreground font-mono">
                   {files.length} file{files.length !== 1 ? 's' : ''} • {files.reduce((s, f) => s + f.rowCount, 0).toLocaleString()} total rows
                 </span>
-                <button
-                  onClick={() => setOpen(false)}
-                  className="px-4 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                >
-                  Done
-                </button>
+                <div className="flex gap-2">
+                  {files.some(f => !f.saved) && (
+                    <button
+                      onClick={saveToBackend}
+                      disabled={saving}
+                      className="px-4 py-1.5 text-xs font-medium rounded-lg bg-drift-positive text-primary-foreground hover:opacity-90 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {saving && <Loader2 className="w-3 h-3 animate-spin" />}
+                      {saving ? 'Saving...' : 'Save to Cloud'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setOpen(false)}
+                    className="px-4 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  >
+                    Done
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>

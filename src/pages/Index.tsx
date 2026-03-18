@@ -10,8 +10,10 @@ import StressChart from '@/components/StressChart';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import LSTMVisualization from '@/components/LSTMVisualization';
 import BehaviorDetector from '@/components/BehaviorDetector';
+import type { BehaviorStatsData } from '@/components/BehaviorDetector';
 import DataExport from '@/components/DataExport';
 import DataUploader from '@/components/DataUploader';
+import MoodChat from '@/components/MoodChat';
 import {
   generateDataset,
   getFeatureImportances,
@@ -27,9 +29,16 @@ const Index = () => {
     start: new Date('2025-12-01'),
     end: new Date('2026-03-01'),
   });
+  const [behaviorStats, setBehaviorStats] = useState<BehaviorStatsData>({
+    keystrokes: 0, clicks: 0, scrolls: 0, avgIntensity: 0, recentEvents: [],
+  });
 
   const handleRangeChange = useCallback((start: Date, end: Date) => {
     setDateRange({ start, end });
+  }, []);
+
+  const handleBehaviorStats = useCallback((stats: BehaviorStatsData) => {
+    setBehaviorStats(stats);
   }, []);
 
   const data = useMemo(() => {
@@ -118,11 +127,14 @@ const Index = () => {
           <FeatureImportanceChart features={features} />
         </div>
 
-        {/* LSTM + Live Behavior */}
+        {/* LSTM + Mood Chat */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <LSTMVisualization />
-          <BehaviorDetector />
+          <MoodChat behaviorStats={behaviorStats} />
         </div>
+
+        {/* Behavior Stream */}
+        <BehaviorDetector onStatsChange={handleBehaviorStats} />
 
         {/* Second Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
