@@ -22,6 +22,7 @@ import {
 
 const Index = () => {
   const allData = useMemo(() => generateDataset(90), []);
+  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
     start: new Date('2025-12-01'),
     end: new Date('2026-03-01'),
