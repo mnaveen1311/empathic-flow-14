@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-interface BehaviorEvent {
+export interface BehaviorEvent {
   id: number;
   timestamp: string;
   type: 'keystroke' | 'mouse_move' | 'click' | 'scroll' | 'pause' | 'burst';
@@ -9,7 +9,19 @@ interface BehaviorEvent {
   intensity: number;
 }
 
-const BehaviorDetector = () => {
+export interface BehaviorStatsData {
+  keystrokes: number;
+  clicks: number;
+  scrolls: number;
+  avgIntensity: number;
+  recentEvents: { type: string; label: string; intensity: number }[];
+}
+
+interface Props {
+  onStatsChange?: (stats: BehaviorStatsData) => void;
+}
+
+const BehaviorDetector = ({ onStatsChange }: Props) => {
   const [events, setEvents] = useState<BehaviorEvent[]>([]);
   const [isTracking, setIsTracking] = useState(true);
   const [stats, setStats] = useState({ keystrokes: 0, clicks: 0, scrolls: 0, avgIntensity: 0 });
@@ -81,12 +93,21 @@ const BehaviorDetector = () => {
     };
   }, [isTracking, addEvent]);
 
-  // Update avg intensity
+  // Update avg intensity + notify parent
   useEffect(() => {
     if (events.length === 0) return;
     const avg = events.reduce((s, e) => s + e.intensity, 0) / events.length;
-    setStats(s => ({ ...s, avgIntensity: Math.round(avg * 100) }));
+    const newAvg = Math.round(avg * 100);
+    setStats(s => ({ ...s, avgIntensity: newAvg }));
   }, [events]);
+
+  // Notify parent of stats changes
+  useEffect(() => {
+    onStatsChange?.({
+      ...stats,
+      recentEvents: events.slice(0, 10).map(e => ({ type: e.type, label: e.label, intensity: e.intensity })),
+    });
+  }, [stats, events, onStatsChange]);
 
   const getTypeColor = (type: BehaviorEvent['type']) => {
     switch (type) {

@@ -14,7 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      mood_messages: {
+        Row: {
+          behavior_context: Json | null
+          content: string
+          created_at: string
+          detected_mood: string | null
+          id: string
+          mood_score: number | null
+          role: string
+        }
+        Insert: {
+          behavior_context?: Json | null
+          content: string
+          created_at?: string
+          detected_mood?: string | null
+          id?: string
+          mood_score?: number | null
+          role: string
+        }
+        Update: {
+          behavior_context?: Json | null
+          content?: string
+          created_at?: string
+          detected_mood?: string | null
+          id?: string
+          mood_score?: number | null
+          role?: string
+        }
+        Relationships: []
+      }
+      uploaded_data: {
+        Row: {
+          created_at: string
+          file_id: string
+          id: string
+          row_data: Json
+        }
+        Insert: {
+          created_at?: string
+          file_id: string
+          id?: string
+          row_data: Json
+        }
+        Update: {
+          created_at?: string
+          file_id?: string
+          id?: string
+          row_data?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uploaded_data_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uploaded_files: {
+        Row: {
+          category: string
+          created_at: string
+          file_name: string
+          file_size: number
+          headers: Json
+          id: string
+          row_count: number
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          file_name: string
+          file_size?: number
+          headers?: Json
+          id?: string
+          row_count?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          file_name?: string
+          file_size?: number
+          headers?: Json
+          id?: string
+          row_count?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
