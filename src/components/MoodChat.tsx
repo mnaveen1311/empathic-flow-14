@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Brain, Activity, Smile, Frown, Meh, Zap, Heart } from 'lucide-react';
+import { Send, Brain, Activity, Smile, Frown, Meh, Zap, Heart, Mic, MicOff, ToggleLeft, ToggleRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface BehaviorStats {
@@ -38,6 +38,15 @@ const MOOD_COLORS: Record<string, string> = {
   angry: 'text-drift-negative',
 };
 
+const SUGGESTIONS = [
+  "I'm feeling great today!",
+  "I'm a bit stressed out",
+  "Feeling anxious about work",
+  "I'm calm and relaxed",
+  "Frustrated with things lately",
+  "Excited about something new",
+];
+
 function parseMoodFromResponse(text: string): { mood?: string; score?: number; confidence?: number; cleanText: string } {
   const jsonMatch = text.match(/```json\s*(\{[\s\S]*?\})\s*```/);
   if (jsonMatch) {
@@ -55,16 +64,75 @@ const MoodChat = ({ behaviorStats }: Props) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentMood, setCurrentMood] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(true);
+  const [voiceSupported, setVoiceSupported] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<any>(null);
+
+  // Check for Web Speech API support
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    setVoiceSupported(!!SpeechRecognition);
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
-  const sendMessage = useCallback(async () => {
-    const text = input.trim();
+  const toggleRecording = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    if (isRecording && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+    recognitionRef.current = recognition;
+
+    let finalTranscript = '';
+
+    recognition.onresult = (event: any) => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + ' ';
+        } else {
+          interim = transcript;
+        }
+      }
+      setInput(finalTranscript + interim);
+    };
+
+    recognition.onerror = () => {
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
+    recognition.start();
+    setIsRecording(true);
+  }, [isRecording]);
+
+  const sendMessage = useCallback(async (overrideText?: string) => {
+    const text = (overrideText || input).trim();
     if (!text || isLoading) return;
+
+    // Stop recording if active
+    if (isRecording && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsRecording(false);
+    }
 
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
@@ -174,7 +242,7 @@ const MoodChat = ({ behaviorStats }: Props) => {
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, messages, behaviorStats]);
+  }, [input, isLoading, messages, behaviorStats, isRecording]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -201,6 +269,15 @@ const MoodChat = ({ behaviorStats }: Props) => {
           <h3 className="text-sm font-semibold heading-tight">Mood Analysis Chat</h3>
         </div>
         <div className="flex items-center gap-2">
+          {/* Suggestions Toggle */}
+          <button
+            onClick={() => setShowSuggestions(prev => !prev)}
+            className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors px-1.5 py-0.5 rounded bg-secondary"
+            title={showSuggestions ? 'Hide suggestions' : 'Show suggestions'}
+          >
+            {showSuggestions ? <ToggleRight className="w-3 h-3 text-primary" /> : <ToggleLeft className="w-3 h-3" />}
+            <span>Hints</span>
+          </button>
           {currentMood && (
             <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full bg-secondary ${moodColor}`}>
               {currentMood.toUpperCase()}
@@ -219,9 +296,9 @@ const MoodChat = ({ behaviorStats }: Props) => {
           <div className="flex flex-col items-center justify-center h-full text-center gap-3">
             <Brain className="w-8 h-8 text-muted-foreground/30" />
             <div>
-              <p className="text-xs text-muted-foreground">Type how you're feeling</p>
+              <p className="text-xs text-muted-foreground">Type or speak how you're feeling</p>
               <p className="text-[10px] text-muted-foreground/60 mt-1">
-                AI analyzes your text + live behavior patterns
+                AI analyzes your text, voice & live behavior patterns
               </p>
             </div>
           </div>
@@ -267,26 +344,71 @@ const MoodChat = ({ behaviorStats }: Props) => {
         )}
       </div>
 
+      {/* Suggestions */}
+      <AnimatePresence>
+        {showSuggestions && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden border-t border-secondary"
+          >
+            <div className="px-3 py-2 flex flex-wrap gap-1.5">
+              {SUGGESTIONS.map((s, i) => (
+                <button
+                  key={i}
+                  onClick={() => sendMessage(s)}
+                  disabled={isLoading}
+                  className="text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Input */}
       <div className="p-3 border-t border-secondary">
         <div className="flex items-end gap-2">
+          {/* Voice Button */}
+          {voiceSupported && (
+            <button
+              onClick={toggleRecording}
+              className={`p-2 rounded-lg transition-colors ${
+                isRecording
+                  ? 'bg-drift-negative/20 text-drift-negative animate-pulse'
+                  : 'bg-secondary text-muted-foreground hover:text-foreground'
+              }`}
+              title={isRecording ? 'Stop recording' : 'Start voice input'}
+            >
+              {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+            </button>
+          )}
           <textarea
             ref={inputRef}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="How are you feeling right now?"
+            placeholder={isRecording ? 'Listening... speak now' : 'How are you feeling right now?'}
             rows={1}
             className="flex-1 bg-secondary rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
           />
           <button
-            onClick={sendMessage}
+            onClick={() => sendMessage()}
             disabled={!input.trim() || isLoading}
             className="p-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-40 hover:bg-primary/90 transition-colors"
           >
             <Send className="w-3.5 h-3.5" />
           </button>
         </div>
+        {isRecording && (
+          <div className="flex items-center gap-1.5 mt-1.5 ml-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-drift-negative animate-pulse" />
+            <span className="text-[10px] text-drift-negative font-mono">Recording voice...</span>
+          </div>
+        )}
       </div>
     </motion.div>
   );
