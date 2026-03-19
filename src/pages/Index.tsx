@@ -134,6 +134,9 @@ const Index = () => {
           <MoodChat behaviorStats={behaviorStats} />
         </div>
 
+        {/* Mood History */}
+        <MoodHistory />
+
         {/* Behavior Stream */}
         <BehaviorDetector onStatsChange={handleBehaviorStats} />
 
