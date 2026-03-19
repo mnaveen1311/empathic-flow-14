@@ -14,6 +14,7 @@ import type { BehaviorStatsData } from '@/components/BehaviorDetector';
 import DataExport from '@/components/DataExport';
 import DataUploader from '@/components/DataUploader';
 import MoodChat from '@/components/MoodChat';
+import MoodHistory from '@/components/MoodHistory';
 import {
   generateDataset,
   getFeatureImportances,
@@ -132,6 +133,9 @@ const Index = () => {
           <LSTMVisualization />
           <MoodChat behaviorStats={behaviorStats} />
         </div>
+
+        {/* Mood History */}
+        <MoodHistory />
 
         {/* Behavior Stream */}
         <BehaviorDetector onStatsChange={handleBehaviorStats} />
