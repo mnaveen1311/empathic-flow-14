@@ -139,6 +139,12 @@ const Index = () => {
         {/* Mood History */}
         <MoodHistory />
 
+        {/* ML Training + Ground Truth Validation */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <MLTraining data={data} />
+          <GroundTruthValidation data={data} />
+        </div>
+
         {/* Behavior Stream */}
         <BehaviorDetector onStatsChange={handleBehaviorStats} />
 
