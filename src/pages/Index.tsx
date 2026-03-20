@@ -15,6 +15,8 @@ import DataExport from '@/components/DataExport';
 import DataUploader from '@/components/DataUploader';
 import MoodChat from '@/components/MoodChat';
 import MoodHistory from '@/components/MoodHistory';
+import MLTraining from '@/components/MLTraining';
+import GroundTruthValidation from '@/components/GroundTruthValidation';
 import {
   generateDataset,
   getFeatureImportances,
