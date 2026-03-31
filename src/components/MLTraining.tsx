@@ -18,7 +18,7 @@ const DEFAULT_CONFIG: TrainingConfig = {
   learningRate: 0.01,
 };
 
-const MLTraining = ({ data }: Props) => {
+const MLTraining = ({ data, onTrainingComplete }: Props) => {
   const [result, setResult] = useState<TrainingResult | null>(null);
   const [isTraining, setIsTraining] = useState(false);
   const [config] = useState<TrainingConfig>(DEFAULT_CONFIG);
@@ -26,13 +26,13 @@ const MLTraining = ({ data }: Props) => {
   const handleTrain = useCallback(() => {
     if (data.length < 10) return;
     setIsTraining(true);
-    // Run training async to not block UI
     setTimeout(() => {
       const res = trainModel(data, config);
       setResult(res);
+      onTrainingComplete?.(res);
       setIsTraining(false);
     }, 100);
-  }, [data, config]);
+  }, [data, config, onTrainingComplete]);
 
   return (
     <motion.div
