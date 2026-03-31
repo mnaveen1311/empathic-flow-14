@@ -97,17 +97,50 @@ export function generateDataset(days = 90): DataPoint[] {
   return data;
 }
 
-export function getFeatureImportances(): FeatureImportance[] {
-  return [
-    { feature: 'Sleep Duration', importance: 0.24 },
-    { feature: 'Behavioral Consistency', importance: 0.19 },
-    { feature: 'Screen Time', importance: 0.17 },
-    { feature: 'Social Interaction', importance: 0.14 },
-    { feature: 'Activity Level', importance: 0.11 },
-    { feature: 'Usage Intensity', importance: 0.08 },
-    { feature: 'Weekend Flag', importance: 0.04 },
-    { feature: 'Hour of Day', importance: 0.03 },
-  ].sort((a, b) => b.importance - a.importance);
+export function getFeatureImportances(data: DataPoint[]): FeatureImportance[] {
+  // Compute genuine correlations between features and mood
+  if (data.length < 5) {
+    return [
+      { feature: 'Sleep Duration', importance: 0 },
+      { feature: 'Behavioral Consistency', importance: 0 },
+      { feature: 'Screen Time', importance: 0 },
+      { feature: 'Social Interaction', importance: 0 },
+      { feature: 'Activity Level', importance: 0 },
+      { feature: 'Usage Intensity', importance: 0 },
+    ];
+  }
+
+  const features: { name: string; values: number[] }[] = [
+    { name: 'Sleep Duration', values: data.map(d => d.sleepDuration) },
+    { name: 'Behavioral Consistency', values: data.map(d => d.behavioralConsistency) },
+    { name: 'Screen Time', values: data.map(d => d.screenTime) },
+    { name: 'Social Interaction', values: data.map(d => d.socialInteraction) },
+    { name: 'Activity Level', values: data.map(d => d.activityLevel) },
+    { name: 'Usage Intensity', values: data.map(d => d.usageIntensity) },
+  ];
+
+  const moods = data.map(d => d.mood);
+  const moodMean = moods.reduce((s, v) => s + v, 0) / moods.length;
+
+  const importances = features.map(f => {
+    const fMean = f.values.reduce((s, v) => s + v, 0) / f.values.length;
+    let cov = 0, fVar = 0, mVar = 0;
+    for (let i = 0; i < data.length; i++) {
+      const fd = f.values[i] - fMean;
+      const md = moods[i] - moodMean;
+      cov += fd * md;
+      fVar += fd * fd;
+      mVar += md * md;
+    }
+    const corr = Math.abs(cov / (Math.sqrt(fVar * mVar) || 1));
+    return { feature: f.name, importance: corr };
+  });
+
+  // Normalize to sum to 1
+  const total = importances.reduce((s, v) => s + v.importance, 0);
+  if (total > 0) importances.forEach(v => v.importance = Math.round((v.importance / total) * 100) / 100);
+
+  return importances.sort((a, b) => b.importance - a.importance);
 }
 
 export function getPipelineStatus(data: DataPoint[]): PipelineStatus {
