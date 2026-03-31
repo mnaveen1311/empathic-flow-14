@@ -144,8 +144,16 @@ export function getFeatureImportances(data: DataPoint[]): FeatureImportance[] {
 }
 
 export function getPipelineStatus(data: DataPoint[]): PipelineStatus {
-  const avgDrift = data.slice(-7).reduce((s, d) => s + d.driftCoefficient, 0) / 7;
-  const prevDrift = data.slice(-14, -7).reduce((s, d) => s + d.driftCoefficient, 0) / 7;
+  const avgDrift = data.slice(-7).reduce((s, d) => s + d.driftCoefficient, 0) / Math.min(7, data.length || 1);
+  const prevDrift = data.slice(-14, -7).reduce((s, d) => s + d.driftCoefficient, 0) / Math.min(7, data.slice(-14, -7).length || 1);
+
+  // Compute genuine accuracy: prediction vs actual mood, threshold-based
+  let correctCount = 0;
+  data.forEach(d => {
+    if (Math.abs(d.predictedMood - d.mood) < 1.5) correctCount++;
+  });
+  const genuineAccuracy = data.length > 0 ? Math.round((correctCount / data.length) * 1000) / 10 : 0;
+
   return {
     filesScanned: 4,
     dataPoints: data.length,
@@ -153,7 +161,7 @@ export function getPipelineStatus(data: DataPoint[]): PipelineStatus {
     driftCoefficient: Math.round(avgDrift * 100) / 100,
     driftDelta: Math.round((avgDrift - prevDrift) * 100) / 100,
     systemStatus: avgDrift > 0.15 ? 'Drifting' : 'Stable',
-    modelAccuracy: 87.3,
+    modelAccuracy: genuineAccuracy,
   };
 }
 
