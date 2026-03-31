@@ -1,5 +1,5 @@
-// Simulated Emotion Drift Data Engine
-// Generates realistic behavioral + emotional time-series data
+// Emotion Drift Data Engine
+// Generates behavioral + emotional time-series data (NO fake predictions)
 
 export interface DataPoint {
   timestamp: string;
@@ -13,7 +13,6 @@ export interface DataPoint {
   socialInteraction: number;
   behavioralConsistency: number;
   usageIntensity: number;
-  predictedMood: number;
   driftCoefficient: number;
 }
 
@@ -26,6 +25,7 @@ export interface ModelMetrics {
   accuracy: number;
   f1Score: number;
   mae: number;
+  trained: boolean;
 }
 
 export interface PipelineStatus {
@@ -35,7 +35,6 @@ export interface PipelineStatus {
   driftCoefficient: number;
   driftDelta: number;
   systemStatus: 'Stable' | 'Drifting' | 'Alert';
-  modelAccuracy: number;
 }
 
 function seededRandom(seed: number) {
@@ -71,15 +70,15 @@ export function generateDataset(days = 90): DataPoint[] {
     date.setDate(date.getDate() + i);
     
     const mood = Math.max(1, Math.min(10, moods[i]));
-    // Realistic prediction error: combine systematic bias + random noise for genuine ML-like predictions
-    const systematicBias = Math.sin(i * 0.3) * 0.8; // model bias that drifts over time
-    const randomNoise = (seededRandom(i * 13) - 0.5) * 3.5; // wider noise range ±1.75
-    const featureNoise = (seededRandom(i * 29) - 0.4) * 1.2; // asymmetric feature-based error
-    const predictedMood = Math.max(1, Math.min(10, mood + systematicBias + randomNoise + featureNoise));
-    const drift = Math.abs(mood - predictedMood) / 10;
     
     const consistency = i >= 7 
       ? moods.slice(Math.max(0, i - 7), i).reduce((a, b) => a + Math.abs(b - moods[Math.max(0, i - 1)]), 0) / 7
+      : 0;
+
+    // Drift coefficient: based on behavioral variance over past 7 days (no fake predictions)
+    const recentMoods = moods.slice(Math.max(0, i - 7), i + 1);
+    const moodVariance = recentMoods.length > 1
+      ? recentMoods.reduce((s, m) => s + Math.abs(m - recentMoods[0]), 0) / recentMoods.length / 10
       : 0;
 
     data.push({
@@ -94,15 +93,13 @@ export function generateDataset(days = 90): DataPoint[] {
       socialInteraction: Math.round(Math.max(0, Math.min(10, social[i])) * 10) / 10,
       behavioralConsistency: Math.round(consistency * 100) / 100,
       usageIntensity: Math.round((screenTime[i] / (screenTime[Math.max(0, i - 1)] || 1)) * 100) / 100,
-      predictedMood: Math.round(predictedMood * 10) / 10,
-      driftCoefficient: Math.round(drift * 1000) / 1000,
+      driftCoefficient: Math.round(moodVariance * 1000) / 1000,
     });
   }
   return data;
 }
 
 export function getFeatureImportances(data: DataPoint[]): FeatureImportance[] {
-  // Compute genuine correlations between features and mood
   if (data.length < 5) {
     return [
       { feature: 'Sleep Duration', importance: 0 },
@@ -140,7 +137,6 @@ export function getFeatureImportances(data: DataPoint[]): FeatureImportance[] {
     return { feature: f.name, importance: corr };
   });
 
-  // Normalize to sum to 1
   const total = importances.reduce((s, v) => s + v.importance, 0);
   if (total > 0) importances.forEach(v => v.importance = Math.round((v.importance / total) * 100) / 100);
 
@@ -151,13 +147,6 @@ export function getPipelineStatus(data: DataPoint[]): PipelineStatus {
   const avgDrift = data.slice(-7).reduce((s, d) => s + d.driftCoefficient, 0) / Math.min(7, data.length || 1);
   const prevDrift = data.slice(-14, -7).reduce((s, d) => s + d.driftCoefficient, 0) / Math.min(7, data.slice(-14, -7).length || 1);
 
-  // Compute genuine accuracy: prediction vs actual mood, threshold-based
-  let correctCount = 0;
-  data.forEach(d => {
-    if (Math.abs(d.predictedMood - d.mood) < 1.0) correctCount++;
-  });
-  const genuineAccuracy = data.length > 0 ? Math.round((correctCount / data.length) * 1000) / 10 : 0;
-
   return {
     filesScanned: 4,
     dataPoints: data.length,
@@ -165,48 +154,23 @@ export function getPipelineStatus(data: DataPoint[]): PipelineStatus {
     driftCoefficient: Math.round(avgDrift * 100) / 100,
     driftDelta: Math.round((avgDrift - prevDrift) * 100) / 100,
     systemStatus: avgDrift > 0.15 ? 'Drifting' : 'Stable',
-    modelAccuracy: genuineAccuracy,
   };
 }
 
-export function getModelMetrics(data: DataPoint[]): ModelMetrics {
-  if (data.length < 5) return { accuracy: 0, f1Score: 0, mae: 0 };
-
-  // Genuine MAE
-  const mae = data.reduce((s, d) => s + Math.abs(d.predictedMood - d.mood), 0) / data.length;
-
-  // Genuine accuracy (within 1.0 threshold — tighter for research credibility)
-  const correct = data.filter(d => Math.abs(d.predictedMood - d.mood) < 1.0).length;
-  const accuracy = Math.round((correct / data.length) * 1000) / 10;
-
-  // Genuine F1: bin mood into 3 classes and compute macro-F1
-  const bin = (v: number) => v <= 4 ? 0 : v <= 7 ? 1 : 2;
-  const yTrue = data.map(d => bin(d.mood));
-  const yPred = data.map(d => bin(d.predictedMood));
-  const tp = [0, 0, 0], fp = [0, 0, 0], fn = [0, 0, 0];
-  yTrue.forEach((t, i) => {
-    if (t === yPred[i]) tp[t]++;
-    else { fp[yPred[i]]++; fn[t]++; }
-  });
-  let f1Sum = 0;
-  for (let c = 0; c < 3; c++) {
-    const prec = tp[c] / (tp[c] + fp[c] || 1);
-    const rec = tp[c] / (tp[c] + fn[c] || 1);
-    f1Sum += 2 * prec * rec / (prec + rec || 1);
+// These now require trained model results — no fake metrics
+export function getModelMetrics(trainedResult?: { accuracy: number; f1Score: number; mae: number } | null): ModelMetrics {
+  if (!trainedResult) {
+    return { accuracy: 0, f1Score: 0, mae: 0, trained: false };
   }
-
   return {
-    accuracy,
-    f1Score: Math.round((f1Sum / 3) * 100) / 100,
-    mae: Math.round(mae * 100) / 100,
+    accuracy: trainedResult.accuracy,
+    f1Score: trainedResult.f1Score,
+    mae: trainedResult.mae,
+    trained: true,
   };
 }
 
-export function getConfusionMatrix(data: DataPoint[]): number[][] {
-  const bin = (v: number) => v <= 4 ? 0 : v <= 7 ? 1 : 2;
-  const cm = Array.from({ length: 3 }, () => [0, 0, 0]);
-  data.forEach(d => {
-    cm[bin(d.mood)][bin(d.predictedMood)]++;
-  });
-  return cm;
+export function getConfusionMatrix(trainedMatrix?: number[][] | null): number[][] {
+  if (!trainedMatrix) return Array.from({ length: 3 }, () => [0, 0, 0]);
+  return trainedMatrix;
 }

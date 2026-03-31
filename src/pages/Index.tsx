@@ -17,6 +17,7 @@ import MoodChat from '@/components/MoodChat';
 import MoodHistory from '@/components/MoodHistory';
 import MLTraining from '@/components/MLTraining';
 import GroundTruthValidation from '@/components/GroundTruthValidation';
+import type { TrainingResult } from '@/lib/mlEngine';
 import {
   generateDataset,
   getFeatureImportances,
@@ -28,6 +29,7 @@ import {
 const Index = () => {
   const allData = useMemo(() => generateDataset(90), []);
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+  const [trainedResult, setTrainedResult] = useState<TrainingResult | null>(null);
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
     start: new Date('2025-12-01'),
     end: new Date('2026-03-01'),
@@ -44,6 +46,10 @@ const Index = () => {
     setBehaviorStats(stats);
   }, []);
 
+  const handleTrainingComplete = useCallback((result: TrainingResult) => {
+    setTrainedResult(result);
+  }, []);
+
   const data = useMemo(() => {
     return allData.filter(d => {
       const t = new Date(d.timestamp);
@@ -53,8 +59,8 @@ const Index = () => {
 
   const status = useMemo(() => getPipelineStatus(data), [data]);
   const features = useMemo(() => getFeatureImportances(data), [data]);
-  const metrics = useMemo(() => getModelMetrics(data), [data]);
-  const matrix = useMemo(() => getConfusionMatrix(data), [data]);
+  const metrics = useMemo(() => getModelMetrics(trainedResult), [trainedResult]);
+  const matrix = useMemo(() => getConfusionMatrix(trainedResult?.confusionMatrix), [trainedResult]);
 
   return (
     <div className="min-h-screen bg-background grid-pattern">
@@ -115,9 +121,9 @@ const Index = () => {
           />
           <MetricCard
             label="Model Accuracy"
-            value={`${metrics.accuracy}%`}
-            delta={`F1: ${metrics.f1Score} · MAE: ${metrics.mae}`}
-            deltaType="neutral"
+            value={metrics.trained ? `${metrics.accuracy}%` : '—'}
+            delta={metrics.trained ? `F1: ${metrics.f1Score} · MAE: ${metrics.mae}` : 'Train model to see metrics'}
+            deltaType={metrics.trained ? 'neutral' : 'negative'}
             delay={0.25}
           />
         </div>
@@ -141,7 +147,7 @@ const Index = () => {
 
         {/* ML Training + Ground Truth Validation */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <MLTraining data={data} />
+          <MLTraining data={data} onTrainingComplete={handleTrainingComplete} />
           <GroundTruthValidation data={data} />
         </div>
 

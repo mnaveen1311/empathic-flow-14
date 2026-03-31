@@ -23,7 +23,7 @@ const PredictionTable = ({ data }: Props) => {
             <tr className="border-b border-secondary">
               <th className="text-left text-muted-foreground font-medium py-2 pr-4">Date</th>
               <th className="text-right text-muted-foreground font-medium py-2 px-3">Mood</th>
-              <th className="text-right text-muted-foreground font-medium py-2 px-3">Predicted</th>
+              <th className="text-right text-muted-foreground font-medium py-2 px-3">Stress</th>
               <th className="text-right text-muted-foreground font-medium py-2 px-3">Drift</th>
               <th className="text-right text-muted-foreground font-medium py-2 px-3">Sleep</th>
               <th className="text-right text-muted-foreground font-medium py-2 pl-3">Consistency</th>
@@ -40,7 +40,7 @@ const PredictionTable = ({ data }: Props) => {
               >
                 <td className="py-2.5 pr-4 font-mono text-muted-foreground">{row.date}</td>
                 <td className="py-2.5 px-3 text-right font-mono text-primary">{row.mood}</td>
-                <td className="py-2.5 px-3 text-right font-mono text-foreground">{row.predictedMood}</td>
+                <td className="py-2.5 px-3 text-right font-mono text-foreground">{row.stress}</td>
                 <td className={`py-2.5 px-3 text-right font-mono ${row.driftCoefficient > 0.1 ? 'text-drift-negative' : 'text-drift-positive'}`}>
                   {row.driftCoefficient.toFixed(3)}
                 </td>

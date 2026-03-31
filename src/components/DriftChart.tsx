@@ -25,7 +25,7 @@ const DriftChart = ({ data }: DriftChartProps) => {
   const chartData = data.map(d => ({
     date: d.date.slice(5),
     Mood: d.mood,
-    'Predicted Mood': d.predictedMood,
+    Stress: d.stress,
     Activity: d.activityLevel,
   }));
 
@@ -44,7 +44,7 @@ const DriftChart = ({ data }: DriftChartProps) => {
         <div className="flex gap-4 text-xs">
           <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-primary" /> Mood</span>
           <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-drift-positive" /> Activity</span>
-          <span className="flex items-center gap-1.5"><span className="w-2 h-0.5 bg-primary opacity-50" /> Predicted</span>
+          <span className="flex items-center gap-1.5"><span className="w-2 h-0.5 bg-drift-warning" /> Stress</span>
         </div>
       </div>
       <ResponsiveContainer width="100%" height={320}>
@@ -59,7 +59,7 @@ const DriftChart = ({ data }: DriftChartProps) => {
           <YAxis stroke="#475569" fontSize={10} tickLine={false} axisLine={false} domain={[0, 10]} />
           <Tooltip content={<CustomTooltip />} />
           <Area type="monotone" dataKey="Mood" stroke="hsl(217, 91%, 60%)" strokeWidth={2} fill="url(#moodGrad)" dot={false} />
-          <Line type="monotone" dataKey="Predicted Mood" stroke="hsl(217, 91%, 60%)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} opacity={0.5} />
+          <Line type="monotone" dataKey="Stress" stroke="hsl(38, 92%, 50%)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} opacity={0.7} />
           <Line type="monotone" dataKey="Activity" stroke="hsl(160, 84%, 39%)" strokeWidth={1.5} strokeDasharray="2 2" dot={false} />
         </AreaChart>
       </ResponsiveContainer>
