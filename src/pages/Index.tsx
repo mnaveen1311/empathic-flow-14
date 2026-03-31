@@ -52,9 +52,9 @@ const Index = () => {
   }, [allData, dateRange]);
 
   const status = useMemo(() => getPipelineStatus(data), [data]);
-  const features = useMemo(() => getFeatureImportances(), []);
-  const metrics = useMemo(() => getModelMetrics(), []);
-  const matrix = useMemo(() => getConfusionMatrix(), []);
+  const features = useMemo(() => getFeatureImportances(data), [data]);
+  const metrics = useMemo(() => getModelMetrics(data), [data]);
+  const matrix = useMemo(() => getConfusionMatrix(data), [data]);
 
   return (
     <div className="min-h-screen bg-background grid-pattern">
