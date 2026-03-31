@@ -165,14 +165,44 @@ export function getPipelineStatus(data: DataPoint[]): PipelineStatus {
   };
 }
 
-export function getModelMetrics(): ModelMetrics {
-  return { accuracy: 87.3, f1Score: 0.84, mae: 0.62 };
+export function getModelMetrics(data: DataPoint[]): ModelMetrics {
+  if (data.length < 5) return { accuracy: 0, f1Score: 0, mae: 0 };
+
+  // Genuine MAE
+  const mae = data.reduce((s, d) => s + Math.abs(d.predictedMood - d.mood), 0) / data.length;
+
+  // Genuine accuracy (within 1.5 threshold)
+  const correct = data.filter(d => Math.abs(d.predictedMood - d.mood) < 1.5).length;
+  const accuracy = Math.round((correct / data.length) * 1000) / 10;
+
+  // Genuine F1: bin mood into 3 classes and compute macro-F1
+  const bin = (v: number) => v <= 4 ? 0 : v <= 7 ? 1 : 2;
+  const yTrue = data.map(d => bin(d.mood));
+  const yPred = data.map(d => bin(d.predictedMood));
+  const tp = [0, 0, 0], fp = [0, 0, 0], fn = [0, 0, 0];
+  yTrue.forEach((t, i) => {
+    if (t === yPred[i]) tp[t]++;
+    else { fp[yPred[i]]++; fn[t]++; }
+  });
+  let f1Sum = 0;
+  for (let c = 0; c < 3; c++) {
+    const prec = tp[c] / (tp[c] + fp[c] || 1);
+    const rec = tp[c] / (tp[c] + fn[c] || 1);
+    f1Sum += 2 * prec * rec / (prec + rec || 1);
+  }
+
+  return {
+    accuracy,
+    f1Score: Math.round((f1Sum / 3) * 100) / 100,
+    mae: Math.round(mae * 100) / 100,
+  };
 }
 
-export function getConfusionMatrix(): number[][] {
-  return [
-    [42, 5, 2],
-    [3, 38, 4],
-    [1, 6, 34],
-  ];
+export function getConfusionMatrix(data: DataPoint[]): number[][] {
+  const bin = (v: number) => v <= 4 ? 0 : v <= 7 ? 1 : 2;
+  const cm = Array.from({ length: 3 }, () => [0, 0, 0]);
+  data.forEach(d => {
+    cm[bin(d.mood)][bin(d.predictedMood)]++;
+  });
+  return cm;
 }

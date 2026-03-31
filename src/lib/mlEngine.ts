@@ -254,17 +254,25 @@ export function trainModel(data: DataPoint[], config: TrainingConfig): TrainingR
   const cm = Array.from({ length: 3 }, () => new Array(3).fill(0));
   yPred.forEach((p, i) => cm[yTest[i]][p]++);
 
-  // Simulated epoch logs (gradient descent analogy for the forest)
+  // Genuine incremental training logs: add trees one at a time and measure
   const epochLogs = [];
-  for (let e = 1; e <= config.epochs; e++) {
-    const progress = 1 - Math.exp(-e / (config.epochs * 0.3));
-    const noise = (Math.random() - 0.5) * 0.05;
+  for (let t = 1; t <= nTrees; t++) {
+    const subForest = trees.slice(0, t);
+    const trainPred = XTrain.map(x => predictForest(subForest, x));
+    const testPred = XTest.map(x => predictForest(subForest, x));
+
+    const trainCorrect = trainPred.filter((p, i) => p === yTrain[i]).length;
+    const testCorrect = testPred.filter((p, i) => p === yTest[i]).length;
+    const trainAcc = trainCorrect / yTrain.length;
+    const testAcc = testCorrect / yTest.length;
+
+    // Loss as 1 - accuracy (genuine classification error)
     epochLogs.push({
-      epoch: e,
-      trainLoss: Math.max(0.01, 1.2 * (1 - progress) + noise * 0.5),
-      valLoss: Math.max(0.05, 1.35 * (1 - progress * 0.9) + noise),
-      trainAcc: Math.min(0.99, accuracy * progress + (1 - progress) * 0.33 + noise * 0.1),
-      valAcc: Math.min(0.98, accuracy * progress * 0.95 + (1 - progress) * 0.33 + noise * 0.15),
+      epoch: t,
+      trainLoss: Math.round((1 - trainAcc) * 1000) / 1000,
+      valLoss: Math.round((1 - testAcc) * 1000) / 1000,
+      trainAcc: Math.round(trainAcc * 1000) / 1000,
+      valAcc: Math.round(testAcc * 1000) / 1000,
     });
   }
 
