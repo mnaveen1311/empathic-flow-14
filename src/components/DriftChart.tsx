@@ -44,7 +44,7 @@ const DriftChart = ({ data }: DriftChartProps) => {
         <div className="flex gap-4 text-xs">
           <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-primary" /> Mood</span>
           <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-drift-positive" /> Activity</span>
-          <span className="flex items-center gap-1.5"><span className="w-2 h-0.5 bg-primary opacity-50" /> Predicted</span>
+          <span className="flex items-center gap-1.5"><span className="w-2 h-0.5 bg-drift-warning" /> Stress</span>
         </div>
       </div>
       <ResponsiveContainer width="100%" height={320}>
