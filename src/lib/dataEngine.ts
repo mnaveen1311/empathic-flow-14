@@ -154,7 +154,7 @@ export function getPipelineStatus(data: DataPoint[]): PipelineStatus {
   // Compute genuine accuracy: prediction vs actual mood, threshold-based
   let correctCount = 0;
   data.forEach(d => {
-    if (Math.abs(d.predictedMood - d.mood) < 1.5) correctCount++;
+    if (Math.abs(d.predictedMood - d.mood) < 1.0) correctCount++;
   });
   const genuineAccuracy = data.length > 0 ? Math.round((correctCount / data.length) * 1000) / 10 : 0;
 
