@@ -59,7 +59,7 @@ const DriftChart = ({ data }: DriftChartProps) => {
           <YAxis stroke="#475569" fontSize={10} tickLine={false} axisLine={false} domain={[0, 10]} />
           <Tooltip content={<CustomTooltip />} />
           <Area type="monotone" dataKey="Mood" stroke="hsl(217, 91%, 60%)" strokeWidth={2} fill="url(#moodGrad)" dot={false} />
-          <Line type="monotone" dataKey="Predicted Mood" stroke="hsl(217, 91%, 60%)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} opacity={0.5} />
+          <Line type="monotone" dataKey="Stress" stroke="hsl(38, 92%, 50%)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} opacity={0.7} />
           <Line type="monotone" dataKey="Activity" stroke="hsl(160, 84%, 39%)" strokeWidth={1.5} strokeDasharray="2 2" dot={false} />
         </AreaChart>
       </ResponsiveContainer>

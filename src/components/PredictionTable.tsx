@@ -23,7 +23,7 @@ const PredictionTable = ({ data }: Props) => {
             <tr className="border-b border-secondary">
               <th className="text-left text-muted-foreground font-medium py-2 pr-4">Date</th>
               <th className="text-right text-muted-foreground font-medium py-2 px-3">Mood</th>
-              <th className="text-right text-muted-foreground font-medium py-2 px-3">Predicted</th>
+              <th className="text-right text-muted-foreground font-medium py-2 px-3">Stress</th>
               <th className="text-right text-muted-foreground font-medium py-2 px-3">Drift</th>
               <th className="text-right text-muted-foreground font-medium py-2 px-3">Sleep</th>
               <th className="text-right text-muted-foreground font-medium py-2 pl-3">Consistency</th>
