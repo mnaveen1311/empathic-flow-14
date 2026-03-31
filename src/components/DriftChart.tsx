@@ -25,7 +25,7 @@ const DriftChart = ({ data }: DriftChartProps) => {
   const chartData = data.map(d => ({
     date: d.date.slice(5),
     Mood: d.mood,
-    'Predicted Mood': d.predictedMood,
+    Stress: d.stress,
     Activity: d.activityLevel,
   }));
 
