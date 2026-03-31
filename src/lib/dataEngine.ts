@@ -175,8 +175,8 @@ export function getModelMetrics(data: DataPoint[]): ModelMetrics {
   // Genuine MAE
   const mae = data.reduce((s, d) => s + Math.abs(d.predictedMood - d.mood), 0) / data.length;
 
-  // Genuine accuracy (within 1.5 threshold)
-  const correct = data.filter(d => Math.abs(d.predictedMood - d.mood) < 1.5).length;
+  // Genuine accuracy (within 1.0 threshold — tighter for research credibility)
+  const correct = data.filter(d => Math.abs(d.predictedMood - d.mood) < 1.0).length;
   const accuracy = Math.round((correct / data.length) * 1000) / 10;
 
   // Genuine F1: bin mood into 3 classes and compute macro-F1
