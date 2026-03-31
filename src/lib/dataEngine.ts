@@ -71,7 +71,11 @@ export function generateDataset(days = 90): DataPoint[] {
     date.setDate(date.getDate() + i);
     
     const mood = Math.max(1, Math.min(10, moods[i]));
-    const predictedMood = Math.max(1, Math.min(10, mood + (seededRandom(i * 13) - 0.5) * 1.5));
+    // Realistic prediction error: combine systematic bias + random noise for genuine ML-like predictions
+    const systematicBias = Math.sin(i * 0.3) * 0.8; // model bias that drifts over time
+    const randomNoise = (seededRandom(i * 13) - 0.5) * 3.5; // wider noise range ±1.75
+    const featureNoise = (seededRandom(i * 29) - 0.4) * 1.2; // asymmetric feature-based error
+    const predictedMood = Math.max(1, Math.min(10, mood + systematicBias + randomNoise + featureNoise));
     const drift = Math.abs(mood - predictedMood) / 10;
     
     const consistency = i >= 7 
