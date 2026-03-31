@@ -7,6 +7,7 @@ import { trainModel, type TrainingResult, type TrainingConfig } from '@/lib/mlEn
 
 interface Props {
   data: DataPoint[];
+  onTrainingComplete?: (result: TrainingResult) => void;
 }
 
 const DEFAULT_CONFIG: TrainingConfig = {
