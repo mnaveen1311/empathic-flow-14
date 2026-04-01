@@ -279,8 +279,9 @@ export function trainModel(data: DataPoint[], config: TrainingConfig): TrainingR
   const epochLogs = [];
   for (let t = 1; t <= nTrees; t++) {
     const subForest = trees.slice(0, t);
-    const trainPred = XTrain.map(x => predictForest(subForest, x));
-    const testPred = XTest.map(x => predictForest(subForest, x));
+    const subSubsets = featureSubsets.slice(0, t);
+    const trainPred = XTrain.map(x => predictForest(subForest, subSubsets, x));
+    const testPred = XTest.map(x => predictForest(subForest, subSubsets, x));
 
     const trainCorrect = trainPred.filter((p, i) => p === yTrain[i]).length;
     const testCorrect = testPred.filter((p, i) => p === yTest[i]).length;
