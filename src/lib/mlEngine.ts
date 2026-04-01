@@ -247,10 +247,10 @@ export function trainModel(data: DataPoint[], config: TrainingConfig): TrainingR
 
   // Train Random Forest
   const nTrees = 15;
-  const { trees, importances } = trainRandomForest(XTrain, yTrain, nTrees, config.maxDepth, config.minSamples);
+  const { trees, importances, featureSubsets } = trainRandomForest(XTrain, yTrain, nTrees, config.maxDepth, config.minSamples);
 
   // Predictions
-  const yPred = XTest.map(x => predictForest(trees, x));
+  const yPred = XTest.map(x => predictForest(trees, featureSubsets, x));
 
   // Accuracy
   const correct = yPred.filter((p, i) => p === yTest[i]).length;
