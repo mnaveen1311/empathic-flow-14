@@ -156,26 +156,44 @@ function predictTree(node: TreeNode, x: number[]): number {
   return predictTree(node.right!, x);
 }
 
-// Random Forest: ensemble of decision trees with bootstrap sampling
+// Random Forest: ensemble of decision trees with bootstrap sampling + feature subsampling
 function trainRandomForest(
   X: number[][], y: number[], nTrees: number, maxDepth: number, minSamples: number
-): { trees: TreeNode[]; importances: number[] } {
-  const importances = new Array(X[0].length).fill(0);
+): { trees: TreeNode[]; importances: number[]; featureSubsets: number[][] } {
+  const nFeatures = X[0].length;
+  const maxFeatures = Math.max(2, Math.floor(Math.sqrt(nFeatures))); // sqrt subsampling
+  const importances = new Array(nFeatures).fill(0);
   const trees: TreeNode[] = [];
+  const featureSubsets: number[][] = [];
 
   for (let t = 0; t < nTrees; t++) {
-    // Bootstrap sample
+    // Bootstrap sample (with replacement)
     const indices = Array.from({ length: X.length }, () => Math.floor(Math.random() * X.length));
     const Xb = indices.map(i => X[i]);
     const yb = indices.map(i => y[i]);
-    trees.push(buildTree(Xb, yb, 0, maxDepth, minSamples, importances));
+
+    // Feature subsampling: randomly select sqrt(n) features per tree
+    const allFeatures = Array.from({ length: nFeatures }, (_, i) => i);
+    const shuffled = allFeatures.sort(() => Math.random() - 0.5);
+    const selectedFeatures = shuffled.slice(0, maxFeatures);
+    featureSubsets.push(selectedFeatures);
+
+    // Project data to selected features only
+    const XbSub = Xb.map(row => selectedFeatures.map(f => row[f]));
+    const treeImportances = new Array(maxFeatures).fill(0);
+    trees.push(buildTree(XbSub, yb, 0, maxDepth, minSamples, treeImportances));
+
+    // Map importances back to original feature indices
+    selectedFeatures.forEach((origIdx, subIdx) => {
+      importances[origIdx] += treeImportances[subIdx];
+    });
   }
 
   // Normalize importances
   const total = importances.reduce((s, v) => s + v, 0);
   if (total > 0) importances.forEach((_, i) => importances[i] /= total);
 
-  return { trees, importances };
+  return { trees, importances, featureSubsets };
 }
 
 function predictForest(trees: TreeNode[], x: number[]): number {
