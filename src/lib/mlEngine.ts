@@ -196,8 +196,11 @@ function trainRandomForest(
   return { trees, importances, featureSubsets };
 }
 
-function predictForest(trees: TreeNode[], x: number[]): number {
-  const votes = trees.map(t => predictTree(t, x));
+function predictForest(trees: TreeNode[], featureSubsets: number[][], x: number[]): number {
+  const votes = trees.map((t, i) => {
+    const xSub = featureSubsets[i].map(f => x[f]);
+    return predictTree(t, xSub);
+  });
   const counts = new Map<number, number>();
   votes.forEach(v => counts.set(v, (counts.get(v) || 0) + 1));
   let maxCount = 0, bestVal = 0;
