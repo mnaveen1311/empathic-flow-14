@@ -339,12 +339,12 @@ export function validateGroundTruth(data: DataPoint[], config: TrainingConfig): 
 
   // Train mood model
   const moodForest = trainRandomForest(XTrain, yMood.slice(0, splitIdx), 15, config.maxDepth, config.minSamples);
-  const moodPred = XTest.map(x => predictForest(moodForest.trees, x));
+  const moodPred = XTest.map(x => predictForest(moodForest.trees, moodForest.featureSubsets, x));
   const moodTrue = yMood.slice(splitIdx);
 
   // Train stress model
   const stressForest = trainRandomForest(XTrain, yStress.slice(0, splitIdx), 15, config.maxDepth, config.minSamples);
-  const stressPred = XTest.map(x => predictForest(stressForest.trees, x));
+  const stressPred = XTest.map(x => predictForest(stressForest.trees, stressForest.featureSubsets, x));
   const stressTrue = yStress.slice(splitIdx);
 
   // Per-class metrics for mood
