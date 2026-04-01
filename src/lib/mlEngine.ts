@@ -156,30 +156,51 @@ function predictTree(node: TreeNode, x: number[]): number {
   return predictTree(node.right!, x);
 }
 
-// Random Forest: ensemble of decision trees with bootstrap sampling
+// Random Forest: ensemble of decision trees with bootstrap sampling + feature subsampling
 function trainRandomForest(
   X: number[][], y: number[], nTrees: number, maxDepth: number, minSamples: number
-): { trees: TreeNode[]; importances: number[] } {
-  const importances = new Array(X[0].length).fill(0);
+): { trees: TreeNode[]; importances: number[]; featureSubsets: number[][] } {
+  const nFeatures = X[0].length;
+  const maxFeatures = Math.max(2, Math.floor(Math.sqrt(nFeatures))); // sqrt subsampling
+  const importances = new Array(nFeatures).fill(0);
   const trees: TreeNode[] = [];
+  const featureSubsets: number[][] = [];
 
   for (let t = 0; t < nTrees; t++) {
-    // Bootstrap sample
+    // Bootstrap sample (with replacement)
     const indices = Array.from({ length: X.length }, () => Math.floor(Math.random() * X.length));
     const Xb = indices.map(i => X[i]);
     const yb = indices.map(i => y[i]);
-    trees.push(buildTree(Xb, yb, 0, maxDepth, minSamples, importances));
+
+    // Feature subsampling: randomly select sqrt(n) features per tree
+    const allFeatures = Array.from({ length: nFeatures }, (_, i) => i);
+    const shuffled = allFeatures.sort(() => Math.random() - 0.5);
+    const selectedFeatures = shuffled.slice(0, maxFeatures);
+    featureSubsets.push(selectedFeatures);
+
+    // Project data to selected features only
+    const XbSub = Xb.map(row => selectedFeatures.map(f => row[f]));
+    const treeImportances = new Array(maxFeatures).fill(0);
+    trees.push(buildTree(XbSub, yb, 0, maxDepth, minSamples, treeImportances));
+
+    // Map importances back to original feature indices
+    selectedFeatures.forEach((origIdx, subIdx) => {
+      importances[origIdx] += treeImportances[subIdx];
+    });
   }
 
   // Normalize importances
   const total = importances.reduce((s, v) => s + v, 0);
   if (total > 0) importances.forEach((_, i) => importances[i] /= total);
 
-  return { trees, importances };
+  return { trees, importances, featureSubsets };
 }
 
-function predictForest(trees: TreeNode[], x: number[]): number {
-  const votes = trees.map(t => predictTree(t, x));
+function predictForest(trees: TreeNode[], featureSubsets: number[][], x: number[]): number {
+  const votes = trees.map((t, i) => {
+    const xSub = featureSubsets[i].map(f => x[f]);
+    return predictTree(t, xSub);
+  });
   const counts = new Map<number, number>();
   votes.forEach(v => counts.set(v, (counts.get(v) || 0) + 1));
   let maxCount = 0, bestVal = 0;
@@ -226,10 +247,10 @@ export function trainModel(data: DataPoint[], config: TrainingConfig): TrainingR
 
   // Train Random Forest
   const nTrees = 15;
-  const { trees, importances } = trainRandomForest(XTrain, yTrain, nTrees, config.maxDepth, config.minSamples);
+  const { trees, importances, featureSubsets } = trainRandomForest(XTrain, yTrain, nTrees, config.maxDepth, config.minSamples);
 
   // Predictions
-  const yPred = XTest.map(x => predictForest(trees, x));
+  const yPred = XTest.map(x => predictForest(trees, featureSubsets, x));
 
   // Accuracy
   const correct = yPred.filter((p, i) => p === yTest[i]).length;
@@ -258,8 +279,9 @@ export function trainModel(data: DataPoint[], config: TrainingConfig): TrainingR
   const epochLogs = [];
   for (let t = 1; t <= nTrees; t++) {
     const subForest = trees.slice(0, t);
-    const trainPred = XTrain.map(x => predictForest(subForest, x));
-    const testPred = XTest.map(x => predictForest(subForest, x));
+    const subSubsets = featureSubsets.slice(0, t);
+    const trainPred = XTrain.map(x => predictForest(subForest, subSubsets, x));
+    const testPred = XTest.map(x => predictForest(subForest, subSubsets, x));
 
     const trainCorrect = trainPred.filter((p, i) => p === yTrain[i]).length;
     const testCorrect = testPred.filter((p, i) => p === yTest[i]).length;
@@ -317,12 +339,12 @@ export function validateGroundTruth(data: DataPoint[], config: TrainingConfig): 
 
   // Train mood model
   const moodForest = trainRandomForest(XTrain, yMood.slice(0, splitIdx), 15, config.maxDepth, config.minSamples);
-  const moodPred = XTest.map(x => predictForest(moodForest.trees, x));
+  const moodPred = XTest.map(x => predictForest(moodForest.trees, moodForest.featureSubsets, x));
   const moodTrue = yMood.slice(splitIdx);
 
   // Train stress model
   const stressForest = trainRandomForest(XTrain, yStress.slice(0, splitIdx), 15, config.maxDepth, config.minSamples);
-  const stressPred = XTest.map(x => predictForest(stressForest.trees, x));
+  const stressPred = XTest.map(x => predictForest(stressForest.trees, stressForest.featureSubsets, x));
   const stressTrue = yStress.slice(splitIdx);
 
   // Per-class metrics for mood
@@ -397,7 +419,7 @@ export function validateGroundTruth(data: DataPoint[], config: TrainingConfig): 
     const ySub = yMood.slice(0, splitIdx);
 
     const forest = trainRandomForest(XTrainSub, ySub, 10, config.maxDepth, config.minSamples);
-    const pred = XTestSub.map(x => predictForest(forest.trees, x));
+    const pred = XTestSub.map(x => predictForest(forest.trees, forest.featureSubsets, x));
 
     const acc = pred.filter((p, i) => p === moodTrue[i]).length / moodTrue.length;
     const { macroF1 } = classMetrics(moodTrue, pred, 3);

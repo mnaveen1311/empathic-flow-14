@@ -12,7 +12,7 @@ interface Props {
 
 const DEFAULT_CONFIG: TrainingConfig = {
   testSplit: 0.2,
-  maxDepth: 6,
+  maxDepth: 4,
   minSamples: 3,
   epochs: 50,
   learningRate: 0.01,
