@@ -419,7 +419,7 @@ export function validateGroundTruth(data: DataPoint[], config: TrainingConfig): 
     const ySub = yMood.slice(0, splitIdx);
 
     const forest = trainRandomForest(XTrainSub, ySub, 10, config.maxDepth, config.minSamples);
-    const pred = XTestSub.map(x => predictForest(forest.trees, x));
+    const pred = XTestSub.map(x => predictForest(forest.trees, forest.featureSubsets, x));
 
     const acc = pred.filter((p, i) => p === moodTrue[i]).length / moodTrue.length;
     const { macroF1 } = classMetrics(moodTrue, pred, 3);
