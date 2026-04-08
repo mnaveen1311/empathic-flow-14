@@ -257,12 +257,15 @@ export function trainModel(data: DataPoint[], config: TrainingConfig): TrainingR
   const y = addLabelNoise(data.map(d => moodToBin(d.mood)));
   const yRaw = data.map(d => d.mood);
 
+  // Use clean labels for test evaluation (noise only in training)
+  const yClean = data.map(d => moodToBin(d.mood));
+
   // Train/test split
   const splitIdx = Math.floor(X.length * (1 - config.testSplit));
   const XTrain = X.slice(0, splitIdx);
   const yTrain = y.slice(0, splitIdx);
-  const XTest = X.slice(splitIdx);
-  const yTest = y.slice(splitIdx);
+  const XTest = XRaw.slice(splitIdx); // Use clean features for test
+  const yTest = yClean.slice(splitIdx); // Use clean labels for test
   const yTestRaw = yRaw.slice(splitIdx);
 
   // Train Random Forest
