@@ -140,7 +140,7 @@ const Index = () => {
         </div>
 
         {/* Top Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <MetricCard label="Data Points" value={status.dataPoints} delay={0.1} />
           <MetricCard label="Features" value={status.featuresExtracted} delay={0.15} />
           <MetricCard
@@ -149,13 +149,6 @@ const Index = () => {
             delta={`${status.driftDelta >= 0 ? '+' : ''}${status.driftDelta}`}
             deltaType={status.driftDelta < 0 ? 'positive' : 'negative'}
             delay={0.2}
-          />
-          <MetricCard
-            label="Model Accuracy"
-            value={metrics.trained ? `${metrics.accuracy}%` : '—'}
-            delta={metrics.trained ? `F1: ${metrics.f1Score} · MAE: ${metrics.mae}` : 'Train model to see metrics'}
-            deltaType={metrics.trained ? 'neutral' : 'negative'}
-            delay={0.25}
           />
         </div>
 
