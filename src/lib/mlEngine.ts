@@ -229,20 +229,43 @@ function classMetrics(yTrue: number[], yPred: number[], nClasses: number) {
   return { macroF1: f1Sum / nClasses };
 }
 
+// Add realistic noise to features to prevent overfitting on synthetic data
+function addFeatureNoise(X: number[][]): number[][] {
+  return X.map(row => row.map(val => {
+    const noise = (Math.random() - 0.5) * 0.4 * Math.abs(val || 1);
+    return val + noise;
+  }));
+}
+
+// Flip ~12% of labels to simulate real-world labeling noise
+function addLabelNoise(y: number[], flipRate = 0.12): number[] {
+  return y.map(label => {
+    if (Math.random() < flipRate) {
+      const options = [0, 1, 2].filter(v => v !== label);
+      return options[Math.floor(Math.random() * options.length)];
+    }
+    return label;
+  });
+}
+
 // Main training function
 export function trainModel(data: DataPoint[], config: TrainingConfig): TrainingResult {
   const startTime = performance.now();
 
-  const X = data.map(extractFeatures);
-  const y = data.map(d => moodToBin(d.mood));
+  const XRaw = data.map(extractFeatures);
+  const X = addFeatureNoise(XRaw);
+  const y = addLabelNoise(data.map(d => moodToBin(d.mood)));
   const yRaw = data.map(d => d.mood);
+
+  // Use clean labels for test evaluation (noise only in training)
+  const yClean = data.map(d => moodToBin(d.mood));
 
   // Train/test split
   const splitIdx = Math.floor(X.length * (1 - config.testSplit));
   const XTrain = X.slice(0, splitIdx);
   const yTrain = y.slice(0, splitIdx);
-  const XTest = X.slice(splitIdx);
-  const yTest = y.slice(splitIdx);
+  const XTest = XRaw.slice(splitIdx); // Use clean features for test
+  const yTest = yClean.slice(splitIdx); // Use clean labels for test
   const yTestRaw = yRaw.slice(splitIdx);
 
   // Train Random Forest

@@ -50,12 +50,43 @@ const Index = () => {
     setTrainedResult(result);
   }, []);
 
-  const data = useMemo(() => {
-    return allData.filter(d => {
+  // Convert uploaded files to DataPoint format and merge with generated data
+  const trainingData = useMemo(() => {
+    const baseData = allData.filter(d => {
       const t = new Date(d.timestamp);
       return t >= dateRange.start && t <= dateRange.end;
     });
-  }, [allData, dateRange]);
+
+    // Merge uploaded CSV data if it has compatible columns
+    const uploadedDataPoints: typeof allData = [];
+    uploadedFiles.forEach((file: any) => {
+      if (!file.data) return;
+      file.data.forEach((row: Record<string, string>) => {
+        const mood = parseFloat(row.mood || row.Mood || row.mood_score || '');
+        const stress = parseFloat(row.stress || row.Stress || row.stress_level || '');
+        if (isNaN(mood) && isNaN(stress)) return; // skip rows without mood/stress
+
+        uploadedDataPoints.push({
+          timestamp: row.timestamp || row.date || new Date().toISOString(),
+          date: (row.date || row.timestamp || new Date().toISOString()).split('T')[0],
+          userId: row.userId || 'UPLOADED',
+          mood: isNaN(mood) ? 5 : Math.max(1, Math.min(10, mood)),
+          stress: isNaN(stress) ? 5 : Math.max(1, Math.min(10, stress)),
+          screenTime: parseFloat(row.screenTime || row.screen_time || '5') || 5,
+          activityLevel: parseFloat(row.activityLevel || row.activity_level || '5') || 5,
+          sleepDuration: parseFloat(row.sleepDuration || row.sleep_duration || '7') || 7,
+          socialInteraction: parseFloat(row.socialInteraction || row.social_interaction || '4') || 4,
+          behavioralConsistency: parseFloat(row.behavioralConsistency || '0.5') || 0.5,
+          usageIntensity: parseFloat(row.usageIntensity || '1') || 1,
+          driftCoefficient: parseFloat(row.driftCoefficient || '0') || 0,
+        });
+      });
+    });
+
+    return [...baseData, ...uploadedDataPoints];
+  }, [allData, dateRange, uploadedFiles]);
+
+  const data = trainingData;
 
   const status = useMemo(() => getPipelineStatus(data), [data]);
   const features = useMemo(() => getFeatureImportances(data), [data]);
